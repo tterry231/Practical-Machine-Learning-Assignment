@@ -1,0 +1,211 @@
+---
+title: "Practical Machine Learning - Final Project"
+author: "Tim Terry"
+date: "June 27, 2016"
+output: 
+  html_document: 
+    keep_md: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Synopsis
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit, it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self-movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. 
+
+One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, the goal is to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. 
+
+More information is available from the website here:
+http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+The training data for this project are available here:
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project come from this source:
+http://groupware.les.inf.puc-rio.br/har. 
+
+```{r, warning=FALSE, message=FALSE}
+library(caret)
+library(rattle)
+library(rpart.plot)
+library(randomForest)
+library(rpart)
+```
+
+## Data Gathering
+
+The files were downloaded from the above sites prior to starting the analysis and my working directory was set to their folder location.
+
+```{r}
+pml_train <- read.csv("pml-training.csv", sep = ",", na.strings = c("NA", "#DIV/0!", ""), header=TRUE)
+pml_test  <- read.csv("pml-testing.csv", sep = ",", na.strings = c("NA", "#DIV/0!", ""), header=TRUE)
+
+dim(pml_train); dim(pml_test);
+```
+
+The "pml-testing.csv" contains the 20 samples that the final predictive model will be applied to. I want to confirm that the datasets are identical with the exception of the last column which contains our outcome.
+
+```{r}
+cnames_train <- colnames(pml_train)
+cnames_test <- colnames(pml_test)
+
+all.equal(cnames_train[1:159], cnames_test[1:159])
+```
+
+## Data Processing
+
+For Cross-Validation purposes, I'm going to split the Training dataset into two tables, one for training my model(s) and the second for testing the model(s). All data cleaning or processing that is performed on the training set (myTrain) will also be performed on the testing set (myTest).
+
+```{r}
+set.seed(215)
+
+inTrain <- createDataPartition(y=pml_train$classe, p=0.7, list=FALSE)
+myTrain <- pml_train[inTrain,]
+myTest <- pml_train[-inTrain,]
+
+dim(myTrain); dim(myTest);
+```
+
+During my initial data analysis it was discovered that there were a large set of variables that contained NAs. I want to remove these from my analysis. Any variable that is over 50% NA will be removed.
+
+```{r}
+remNA <- sapply(myTrain, function(x) mean(is.na(x))) > 0.5
+table(remNA)
+```
+
+100 variables will be removed. 
+
+```{r}
+myTrain <- myTrain[, remNA==FALSE]
+myTest <- myTest[, remNA==FALSE]
+
+dim(myTrain); dim(myTest);
+```
+
+Next, we will look for variables that have near zero variance.
+
+```{r}
+remNZV <- nearZeroVar(myTrain)
+print(remNZV)
+```
+
+This is the $new_window factor variable(yes/no)
+
+```{r}
+myTrain <- myTrain[,-remNZV]
+myTest <- myTest[, -remNZV]
+dim(myTrain); dim(myTest);
+```
+
+The first 6 variables in the dataset contain timestamps, user names, and sample identifiers. These can be removed.
+
+```{r}
+myTrain <- myTrain[, -(1:6)]
+myTest <- myTest[, -(1:6)]
+
+dim(myTrain); dim(myTest);
+```
+
+## Model Development
+
+### Decision Trees
+
+My first model attempt is a Decision Tree.
+
+```{r}
+dtFit1 <- rpart(classe ~., data=myTrain, method="class")
+dfPredict1 <- predict(dtFit1, myTest, type="class")
+confusionMatrix(dfPredict1, myTest$classe)
+```
+
+```{r}
+fancyRpartPlot(dtFit1)
+```
+
+The Decision Tree resulted in an accuracy rating of 73.12% with a 95% Confidence Interval from 71.97% to 74.25%. I would like to have an Out of Sample error rate < 1%.
+
+### Random Forest
+
+My second model will be a Random Forest without pre-processing to see if we can get a higher accuracy result.
+
+```{r}
+rfFit1 <- randomForest(classe ~., data=myTrain, method="class")
+rfPredict1 <- predict(rfFit1, myTest, type="class")
+confusionMatrix(rfPredict1, myTest$classe)
+```
+
+The Random Forest model did a significantly better job of predicting the test data with an accuracy rating of 99.51% with a 95% Confidence Interval from 99.29% to 99.67% and an Out of Sample error of 0.49%
+
+In an attempt to see if we can improve on that rating I'm going to try pre-processing with Principle Component Analysis.
+
+```{r}
+rfFit2 <- randomForest(classe ~., data=myTrain, preProcess="pca", method="class")
+rfPredict2 <- predict(rfFit2, myTest, type="class")
+confusionMatrix(rfPredict2, myTest$classe)
+```
+
+Principle Component Analysis yielded a slightly higher accuracy rating, 99.54%, with a 95% Confidence Interval between 99.33% and 99.70% with an Out of Sample error of 0.46%.
+
+Since the data in the variables we are testing with have different ranges of values I'd like to Standardize the measures to reduce any impact of highly skewed variables to see if there is an improvement in the model. 
+
+```{r}
+rfFit3 <- randomForest(classe ~., data=myTrain, preProcess=c("center", "scale"), method="class")
+rfPredict3 <- predict(rfFit3, myTest, type="class")
+confusionMatrix(rfPredict3, myTest$classe)
+```
+
+```{r}
+plot(rfFit3)
+```
+
+The Standardized Random Forest resulted in the same accuracy rating, Confidence Interval, and Out of Sample error rate.
+
+Since the results of the PCA and Standardized Random Forests are the same and each meets the goal of an Out of Sample Error Rate of < 1%, we can choose either model as our predictor for the test set. In this case I have chosen the Standardized Random Forest model.
+
+## Results with Test Data
+
+The first set of tasks is to apply all of the data cleaning steps from our model building to the test data in pml_test.
+
+```{r}
+## Remove NAs
+pml_test <- pml_test[, remNA==FALSE]
+
+## Remove Near Zero Variance
+pml_test <- pml_test[,-remNZV]
+
+## Remove first 4 variables
+pml_test <- pml_test[, -(1:6)]
+```
+
+The final item is to make sure that all of the column classes for the pml_test data match those of the myTrain data.
+
+There are three variable in pml_test that have different classes than their counterparts in myTrain. I will coerce them to match.
+
+```{r}
+## Coerce from int to num
+pml_test$magnet_dumbbell_z <- as.numeric(pml_test$magnet_dumbbell_z)
+pml_test$magnet_forearm_y <- as.numeric(pml_test$magnet_forearm_y)
+pml_test$magnet_forearm_z <- as.numeric(pml_test$magnet_forearm_z)
+```
+
+Run the prediction against the pml_test data.
+
+```{r}
+pmlPredict <- predict(rfFit3, newdata=pml_test)
+
+pmlPredResults <- data.frame(problem_id = pml_test$problem_id, predicted = pmlPredict)
+```
+
+### Prediction Results
+
+```{r}
+print(pmlPredResults)
+```
+
+
+
