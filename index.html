@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="UTF-8">
+    <title>Practical Machine Learning - Assignment by tterry231</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
+  </head>
+  <body>
+    <section class="page-header">
+      <h1 class="project-name">Practical Machine Learning - Assignment</h1>
+      <h2 class="project-tagline">Coursera Final Project</h2>
+      <a href="https://github.com/tterry231/Practical-Machine-Learning-Assignment" class="btn">View on GitHub</a>
+      <a href="https://github.com/tterry231/Practical-Machine-Learning-Assignment/zipball/master" class="btn">Download .zip</a>
+      <a href="https://github.com/tterry231/Practical-Machine-Learning-Assignment/tarball/master" class="btn">Download .tar.gz</a>
+    </section>
+
+    <section class="main-content">
+      <h1>
+<a id="practical-machine-learning---final-project" class="anchor" href="#practical-machine-learning---final-project" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Practical Machine Learning - Final Project</h1>
+
+<p>Tim Terry<br>
+June 27, 2016  </p>
+
+<h2>
+<a id="synopsis" class="anchor" href="#synopsis" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Synopsis</h2>
+
+<p>Using devices such as Jawbone Up, Nike FuelBand, and Fitbit, it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self-movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. </p>
+
+<p>One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, the goal is to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. </p>
+
+<p>More information is available from the website here:
+<a href="http://groupware.les.inf.puc-rio.br/har">http://groupware.les.inf.puc-rio.br/har</a> (see the section on the Weight Lifting Exercise Dataset).</p>
+
+<p>The training data for this project are available here:
+<a href="https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv">https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv</a></p>
+
+<p>The test data are available here:
+<a href="https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv">https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv</a></p>
+
+<p>The data for this project come from this source:
+<a href="http://groupware.les.inf.puc-rio.br/har">http://groupware.les.inf.puc-rio.br/har</a>. </p>
+
+<div class="highlight highlight-source-r"><pre>library(<span class="pl-smi">caret</span>)
+library(<span class="pl-smi">rattle</span>)
+library(<span class="pl-smi">rpart.plot</span>)
+library(<span class="pl-smi">randomForest</span>)
+library(<span class="pl-smi">rpart</span>)</pre></div>
+
+<h2>
+<a id="data-gathering" class="anchor" href="#data-gathering" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Data Gathering</h2>
+
+<p>The files were downloaded from the above sites prior to starting the analysis and my working directory was set to their folder location.</p>
+
+<div class="highlight highlight-source-r"><pre><span class="pl-smi">pml_train</span> <span class="pl-k">&lt;-</span> read.csv(<span class="pl-s"><span class="pl-pds">"</span>pml-training.csv<span class="pl-pds">"</span></span>, <span class="pl-v">sep</span> <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>,<span class="pl-pds">"</span></span>, <span class="pl-v">na.strings</span> <span class="pl-k">=</span> c(<span class="pl-s"><span class="pl-pds">"</span>NA<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>#DIV/0!<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span><span class="pl-pds">"</span></span>), <span class="pl-v">header</span><span class="pl-k">=</span><span class="pl-c1">TRUE</span>)
+<span class="pl-smi">pml_test</span>  <span class="pl-k">&lt;-</span> read.csv(<span class="pl-s"><span class="pl-pds">"</span>pml-testing.csv<span class="pl-pds">"</span></span>, <span class="pl-v">sep</span> <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>,<span class="pl-pds">"</span></span>, <span class="pl-v">na.strings</span> <span class="pl-k">=</span> c(<span class="pl-s"><span class="pl-pds">"</span>NA<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>#DIV/0!<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span><span class="pl-pds">"</span></span>), <span class="pl-v">header</span><span class="pl-k">=</span><span class="pl-c1">TRUE</span>)
+
+dim(<span class="pl-smi">pml_train</span>); dim(<span class="pl-smi">pml_test</span>);</pre></div>
+
+<pre><code>## [1] 19622   160
+</code></pre>
+
+<pre><code>## [1]  20 160
+</code></pre>
+
+<p>The "pml-testing.csv" contains the 20 samples that the final predictive model will be applied to. I want to confirm that the datasets are identical with the exception of the last column which contains our outcome.</p>
+
+<div class="highlight highlight-source-r"><pre><span class="pl-smi">cnames_train</span> <span class="pl-k">&lt;-</span> colnames(<span class="pl-smi">pml_train</span>)
+<span class="pl-smi">cnames_test</span> <span class="pl-k">&lt;-</span> colnames(<span class="pl-smi">pml_test</span>)
+
+all.equal(<span class="pl-smi">cnames_train</span>[<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">159</span>], <span class="pl-smi">cnames_test</span>[<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">159</span>])</pre></div>
+
+<pre><code>## [1] TRUE
+</code></pre>
+
+<h2>
+<a id="data-processing" class="anchor" href="#data-processing" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Data Processing</h2>
+
+<p>For Cross-Validation purposes, I'm going to split the Training dataset into two tables, one for training my model(s) and the second for testing the model(s). All data cleaning or processing that is performed on the training set (myTrain) will also be performed on the testing set (myTest).</p>
+
+<div class="highlight highlight-source-r"><pre>set.seed(<span class="pl-c1">215</span>)
+
+<span class="pl-smi">inTrain</span> <span class="pl-k">&lt;-</span> createDataPartition(<span class="pl-v">y</span><span class="pl-k">=</span><span class="pl-smi">pml_train</span><span class="pl-k">$</span><span class="pl-smi">classe</span>, <span class="pl-v">p</span><span class="pl-k">=</span><span class="pl-c1">0.7</span>, <span class="pl-v">list</span><span class="pl-k">=</span><span class="pl-c1">FALSE</span>)
+<span class="pl-smi">myTrain</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">pml_train</span>[<span class="pl-smi">inTrain</span>,]
+<span class="pl-smi">myTest</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">pml_train</span>[<span class="pl-k">-</span><span class="pl-smi">inTrain</span>,]
+
+dim(<span class="pl-smi">myTrain</span>); dim(<span class="pl-smi">myTest</span>);</pre></div>
+
+<pre><code>## [1] 13737   160
+</code></pre>
+
+<pre><code>## [1] 5885  160
+</code></pre>
+
+<p>During my initial data analysis it was discovered that there were a large set of variables that contained NAs. I want to remove these from my analysis. Any variable that is over 50% NA will be removed.</p>
+
+<div class="highlight highlight-source-r"><pre><span class="pl-smi">remNA</span> <span class="pl-k">&lt;-</span> sapply(<span class="pl-smi">myTrain</span>, <span class="pl-k">function</span>(<span class="pl-smi">x</span>) mean(is.na(<span class="pl-smi">x</span>))) <span class="pl-k">&gt;</span> <span class="pl-c1">0.5</span>
+table(<span class="pl-smi">remNA</span>)</pre></div>
+
+<pre><code>## remNA
+## FALSE  TRUE 
+##    60   100
+</code></pre>
+
+<p>100 variables will be removed. </p>
+
+<div class="highlight highlight-source-r"><pre><span class="pl-smi">myTrain</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">myTrain</span>[, <span class="pl-smi">remNA</span><span class="pl-k">==</span><span class="pl-c1">FALSE</span>]
+<span class="pl-smi">myTest</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">myTest</span>[, <span class="pl-smi">remNA</span><span class="pl-k">==</span><span class="pl-c1">FALSE</span>]
+
+dim(<span class="pl-smi">myTrain</span>); dim(<span class="pl-smi">myTest</span>);</pre></div>
+
+<pre><code>## [1] 13737    60
+</code></pre>
+
+<pre><code>## [1] 5885   60
+</code></pre>
+
+<p>Next, we will look for variables that have near zero variance.</p>
+
+<div class="highlight highlight-source-r"><pre><span class="pl-smi">remNZV</span> <span class="pl-k">&lt;-</span> nearZeroVar(<span class="pl-smi">myTrain</span>)
+print(<span class="pl-smi">remNZV</span>)</pre></div>
+
+<pre><code>## [1] 6
+</code></pre>
+
+<p>This is the $new_window factor variable(yes/no)</p>
+
+<div class="highlight highlight-source-r"><pre><span class="pl-smi">myTrain</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">myTrain</span>[,<span class="pl-k">-</span><span class="pl-smi">remNZV</span>]
+<span class="pl-smi">myTest</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">myTest</span>[, <span class="pl-k">-</span><span class="pl-smi">remNZV</span>]
+dim(<span class="pl-smi">myTrain</span>); dim(<span class="pl-smi">myTest</span>);</pre></div>
+
+<pre><code>## [1] 13737    59
+</code></pre>
+
+<pre><code>## [1] 5885   59
+</code></pre>
+
+<p>The first 6 variables in the dataset contain timestamps, user names, and sample identifiers. These can be removed.</p>
+
+<div class="highlight highlight-source-r"><pre><span class="pl-smi">myTrain</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">myTrain</span>[, <span class="pl-k">-</span>(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">6</span>)]
+<span class="pl-smi">myTest</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">myTest</span>[, <span class="pl-k">-</span>(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">6</span>)]
+
+dim(<span class="pl-smi">myTrain</span>); dim(<span class="pl-smi">myTest</span>);</pre></div>
+
+<pre><code>## [1] 13737    53
+</code></pre>
+
+<pre><code>## [1] 5885   53
+</code></pre>
+
+<h2>
+<a id="model-development" class="anchor" href="#model-development" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Model Development</h2>
+
+<h3>
+<a id="decision-trees" class="anchor" href="#decision-trees" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Decision Trees</h3>
+
+<p>My first model attempt is a Decision Tree.</p>
+
+<div class="highlight highlight-source-r"><pre><span class="pl-smi">dtFit1</span> <span class="pl-k">&lt;-</span> rpart(<span class="pl-smi">classe</span> <span class="pl-k">~</span>., <span class="pl-v">data</span><span class="pl-k">=</span><span class="pl-smi">myTrain</span>, <span class="pl-v">method</span><span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>class<span class="pl-pds">"</span></span>)
+<span class="pl-smi">dfPredict1</span> <span class="pl-k">&lt;-</span> predict(<span class="pl-smi">dtFit1</span>, <span class="pl-smi">myTest</span>, <span class="pl-v">type</span><span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>class<span class="pl-pds">"</span></span>)
+confusionMatrix(<span class="pl-smi">dfPredict1</span>, <span class="pl-smi">myTest</span><span class="pl-k">$</span><span class="pl-smi">classe</span>)</pre></div>
+
+<pre><code>## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 1490  254   30  103   43
+##          B   29  585   87   37   68
+##          C   48  155  818  122  143
+##          D   71   85   67  638   56
+##          E   36   60   24   64  772
+## 
+## Overall Statistics
+##                                           
+##                Accuracy : 0.7312          
+##                  95% CI : (0.7197, 0.7425)
+##     No Information Rate : 0.2845          
+##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16       
+##                                           
+##                   Kappa : 0.6585          
+##  Mcnemar's Test P-Value : &lt; 2.2e-16       
+## 
+## Statistics by Class:
+## 
+##                      Class: A Class: B Class: C Class: D Class: E
+## Sensitivity            0.8901  0.51361   0.7973   0.6618   0.7135
+## Specificity            0.8979  0.95343   0.9037   0.9433   0.9617
+## Pos Pred Value         0.7760  0.72581   0.6361   0.6957   0.8075
+## Neg Pred Value         0.9536  0.89092   0.9548   0.9344   0.9371
+## Prevalence             0.2845  0.19354   0.1743   0.1638   0.1839
+## Detection Rate         0.2532  0.09941   0.1390   0.1084   0.1312
+## Detection Prevalence   0.3263  0.13696   0.2185   0.1558   0.1624
+## Balanced Accuracy      0.8940  0.73352   0.8505   0.8026   0.8376
+</code></pre>
+
+<p>The Decision Tree resulted in an accuracy rating of 73.12% with a 95% Confidence Interval from 71.97% to 74.25%. I would like to have an Out of Sample error rate &lt; 1%.</p>
+
+<h3>
+<a id="random-forest" class="anchor" href="#random-forest" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Random Forest</h3>
+
+<p>My second model will be a Random Forest without pre-processing to see if we can get a higher accuracy result.</p>
+
+<div class="highlight highlight-source-r"><pre><span class="pl-smi">rfFit1</span> <span class="pl-k">&lt;-</span> randomForest(<span class="pl-smi">classe</span> <span class="pl-k">~</span>., <span class="pl-v">data</span><span class="pl-k">=</span><span class="pl-smi">myTrain</span>, <span class="pl-v">method</span><span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>class<span class="pl-pds">"</span></span>)
+<span class="pl-smi">rfPredict1</span> <span class="pl-k">&lt;-</span> predict(<span class="pl-smi">rfFit1</span>, <span class="pl-smi">myTest</span>, <span class="pl-v">type</span><span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>class<span class="pl-pds">"</span></span>)
+confusionMatrix(<span class="pl-smi">rfPredict1</span>, <span class="pl-smi">myTest</span><span class="pl-k">$</span><span class="pl-smi">classe</span>)</pre></div>
+
+<pre><code>## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 1674    6    0    0    0
+##          B    0 1131    5    0    0
+##          C    0    2 1020    6    0
+##          D    0    0    1  956    7
+##          E    0    0    0    2 1075
+## 
+## Overall Statistics
+##                                           
+##                Accuracy : 0.9951          
+##                  95% CI : (0.9929, 0.9967)
+##     No Information Rate : 0.2845          
+##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16       
+##                                           
+##                   Kappa : 0.9938          
+##  Mcnemar's Test P-Value : NA              
+## 
+## Statistics by Class:
+## 
+##                      Class: A Class: B Class: C Class: D Class: E
+## Sensitivity            1.0000   0.9930   0.9942   0.9917   0.9935
+## Specificity            0.9986   0.9989   0.9984   0.9984   0.9996
+## Pos Pred Value         0.9964   0.9956   0.9922   0.9917   0.9981
+## Neg Pred Value         1.0000   0.9983   0.9988   0.9984   0.9985
+## Prevalence             0.2845   0.1935   0.1743   0.1638   0.1839
+## Detection Rate         0.2845   0.1922   0.1733   0.1624   0.1827
+## Detection Prevalence   0.2855   0.1930   0.1747   0.1638   0.1830
+## Balanced Accuracy      0.9993   0.9960   0.9963   0.9950   0.9966
+</code></pre>
+
+<p>The Random Forest model did a significantly better job of predicting the test data with an accuracy rating of 99.51% with a 95% Confidence Interval from 99.29% to 99.67% and an Out of Sample error of 0.49%</p>
+
+<p>In an attempt to see if we can improve on that rating I'm going to try pre-processing with Principle Component Analysis.</p>
+
+<div class="highlight highlight-source-r"><pre><span class="pl-smi">rfFit2</span> <span class="pl-k">&lt;-</span> randomForest(<span class="pl-smi">classe</span> <span class="pl-k">~</span>., <span class="pl-v">data</span><span class="pl-k">=</span><span class="pl-smi">myTrain</span>, <span class="pl-v">preProcess</span><span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>pca<span class="pl-pds">"</span></span>, <span class="pl-v">method</span><span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>class<span class="pl-pds">"</span></span>)
+<span class="pl-smi">rfPredict2</span> <span class="pl-k">&lt;-</span> predict(<span class="pl-smi">rfFit2</span>, <span class="pl-smi">myTest</span>, <span class="pl-v">type</span><span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>class<span class="pl-pds">"</span></span>)
+confusionMatrix(<span class="pl-smi">rfPredict2</span>, <span class="pl-smi">myTest</span><span class="pl-k">$</span><span class="pl-smi">classe</span>)</pre></div>
+
+<pre><code>## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 1674    4    0    0    0
+##          B    0 1133    6    0    0
+##          C    0    2 1019    6    0
+##          D    0    0    1  956    6
+##          E    0    0    0    2 1076
+## 
+## Overall Statistics
+##                                          
+##                Accuracy : 0.9954         
+##                  95% CI : (0.9933, 0.997)
+##     No Information Rate : 0.2845         
+##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16      
+##                                          
+##                   Kappa : 0.9942         
+##  Mcnemar's Test P-Value : NA             
+## 
+## Statistics by Class:
+## 
+##                      Class: A Class: B Class: C Class: D Class: E
+## Sensitivity            1.0000   0.9947   0.9932   0.9917   0.9945
+## Specificity            0.9991   0.9987   0.9984   0.9986   0.9996
+## Pos Pred Value         0.9976   0.9947   0.9922   0.9927   0.9981
+## Neg Pred Value         1.0000   0.9987   0.9986   0.9984   0.9988
+## Prevalence             0.2845   0.1935   0.1743   0.1638   0.1839
+## Detection Rate         0.2845   0.1925   0.1732   0.1624   0.1828
+## Detection Prevalence   0.2851   0.1935   0.1745   0.1636   0.1832
+## Balanced Accuracy      0.9995   0.9967   0.9958   0.9951   0.9970
+</code></pre>
+
+<p>Principle Component Analysis yielded a slightly higher accuracy rating, 99.54%, with a 95% Confidence Interval between 99.33% and 99.70% with an Out of Sample error of 0.46%.</p>
+
+<p>Since the data in the variables we are testing with have different ranges of values I'd like to Standardize the measures to reduce any impact of highly skewed variables to see if there is an improvement in the model. </p>
+
+<div class="highlight highlight-source-r"><pre><span class="pl-smi">rfFit3</span> <span class="pl-k">&lt;-</span> randomForest(<span class="pl-smi">classe</span> <span class="pl-k">~</span>., <span class="pl-v">data</span><span class="pl-k">=</span><span class="pl-smi">myTrain</span>, <span class="pl-v">preProcess</span><span class="pl-k">=</span>c(<span class="pl-s"><span class="pl-pds">"</span>center<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>scale<span class="pl-pds">"</span></span>), <span class="pl-v">method</span><span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>class<span class="pl-pds">"</span></span>)
+<span class="pl-smi">rfPredict3</span> <span class="pl-k">&lt;-</span> predict(<span class="pl-smi">rfFit3</span>, <span class="pl-smi">myTest</span>, <span class="pl-v">type</span><span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>class<span class="pl-pds">"</span></span>)
+confusionMatrix(<span class="pl-smi">rfPredict3</span>, <span class="pl-smi">myTest</span><span class="pl-k">$</span><span class="pl-smi">classe</span>)</pre></div>
+
+<pre><code>## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 1674    5    0    0    0
+##          B    0 1132    6    0    0
+##          C    0    2 1020    5    0
+##          D    0    0    0  957    7
+##          E    0    0    0    2 1075
+## 
+## Overall Statistics
+##                                          
+##                Accuracy : 0.9954         
+##                  95% CI : (0.9933, 0.997)
+##     No Information Rate : 0.2845         
+##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16      
+##                                          
+##                   Kappa : 0.9942         
+##  Mcnemar's Test P-Value : NA             
+## 
+## Statistics by Class:
+## 
+##                      Class: A Class: B Class: C Class: D Class: E
+## Sensitivity            1.0000   0.9939   0.9942   0.9927   0.9935
+## Specificity            0.9988   0.9987   0.9986   0.9986   0.9996
+## Pos Pred Value         0.9970   0.9947   0.9932   0.9927   0.9981
+## Neg Pred Value         1.0000   0.9985   0.9988   0.9986   0.9985
+## Prevalence             0.2845   0.1935   0.1743   0.1638   0.1839
+## Detection Rate         0.2845   0.1924   0.1733   0.1626   0.1827
+## Detection Prevalence   0.2853   0.1934   0.1745   0.1638   0.1830
+## Balanced Accuracy      0.9994   0.9963   0.9964   0.9957   0.9966
+</code></pre>
+
+<p>The Standardized Random Forest resulted in the same accuracy rating, Confidence Interval, and Out of Sample error rate.</p>
+
+<p>Since the results of the PCA and Standardized Random Forests are the same and each meets the goal of an Out of Sample Error Rate of &lt; 1%, we can choose either model as our predictor for the test set. In this case I have chosen the Standardized Random Forest model.</p>
+
+<h2>
+<a id="results-with-test-data" class="anchor" href="#results-with-test-data" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Results with Test Data</h2>
+
+<p>The first set of tasks is to apply all of the data cleaning steps from our model building to the test data in pml_test.</p>
+
+<div class="highlight highlight-source-r"><pre><span class="pl-c">## Remove NAs</span>
+<span class="pl-smi">pml_test</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">pml_test</span>[, <span class="pl-smi">remNA</span><span class="pl-k">==</span><span class="pl-c1">FALSE</span>]
+
+<span class="pl-c">## Remove Near Zero Variance</span>
+<span class="pl-smi">pml_test</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">pml_test</span>[,<span class="pl-k">-</span><span class="pl-smi">remNZV</span>]
+
+<span class="pl-c">## Remove first 4 variables</span>
+<span class="pl-smi">pml_test</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">pml_test</span>[, <span class="pl-k">-</span>(<span class="pl-c1">1</span><span class="pl-k">:</span><span class="pl-c1">6</span>)]</pre></div>
+
+<p>The final item is to make sure that all of the column classes for the pml_test data match those of the myTrain data.</p>
+
+<p>There are three variable in pml_test that have different classes than their counterparts in myTrain. I will coerce them to match.</p>
+
+<div class="highlight highlight-source-r"><pre><span class="pl-c">## Coerce from int to num</span>
+<span class="pl-smi">pml_test</span><span class="pl-k">$</span><span class="pl-smi">magnet_dumbbell_z</span> <span class="pl-k">&lt;-</span> as.numeric(<span class="pl-smi">pml_test</span><span class="pl-k">$</span><span class="pl-smi">magnet_dumbbell_z</span>)
+<span class="pl-smi">pml_test</span><span class="pl-k">$</span><span class="pl-smi">magnet_forearm_y</span> <span class="pl-k">&lt;-</span> as.numeric(<span class="pl-smi">pml_test</span><span class="pl-k">$</span><span class="pl-smi">magnet_forearm_y</span>)
+<span class="pl-smi">pml_test</span><span class="pl-k">$</span><span class="pl-smi">magnet_forearm_z</span> <span class="pl-k">&lt;-</span> as.numeric(<span class="pl-smi">pml_test</span><span class="pl-k">$</span><span class="pl-smi">magnet_forearm_z</span>)</pre></div>
+
+<p>Run the prediction against the pml_test data.</p>
+
+<div class="highlight highlight-source-r"><pre><span class="pl-smi">pmlPredict</span> <span class="pl-k">&lt;-</span> predict(<span class="pl-smi">rfFit3</span>, <span class="pl-v">newdata</span><span class="pl-k">=</span><span class="pl-smi">pml_test</span>)
+
+<span class="pl-smi">pmlPredResults</span> <span class="pl-k">&lt;-</span> <span class="pl-k">data.frame</span>(<span class="pl-v">problem_id</span> <span class="pl-k">=</span> <span class="pl-smi">pml_test</span><span class="pl-k">$</span><span class="pl-smi">problem_id</span>, <span class="pl-v">predicted</span> <span class="pl-k">=</span> <span class="pl-smi">pmlPredict</span>)</pre></div>
+
+<h3>
+<a id="prediction-results" class="anchor" href="#prediction-results" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Prediction Results</h3>
+
+<div class="highlight highlight-source-r"><pre>print(<span class="pl-smi">pmlPredResults</span>)</pre></div>
+
+<pre><code>##    problem_id predicted
+## 1           1         B
+## 2           2         A
+## 3           3         B
+## 4           4         A
+## 5           5         A
+## 6           6         E
+## 7           7         D
+## 8           8         B
+## 9           9         A
+## 10         10         A
+## 11         11         B
+## 12         12         C
+## 13         13         B
+## 14         14         A
+## 15         15         E
+## 16         16         E
+## 17         17         A
+## 18         18         B
+## 19         19         B
+## 20         20         B
+</code></pre>
+
+      <footer class="site-footer">
+        <span class="site-footer-owner"><a href="https://github.com/tterry231/Practical-Machine-Learning-Assignment">Practical Machine Learning - Assignment</a> is maintained by <a href="https://github.com/tterry231">tterry231</a>.</span>
+
+        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the <a href="https://github.com/jasonlong/cayman-theme">Cayman theme</a> by <a href="https://twitter.com/jasonlong">Jason Long</a>.</span>
+      </footer>
+
+    </section>
+
+  
+  </body>
+</html>
